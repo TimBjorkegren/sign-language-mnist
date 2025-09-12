@@ -1,0 +1,18 @@
+# Virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Jupyter Notebook checkpoints
+*.ipynb_checkpoints/
+
+# Data och modeller
+data/
+*.h5
+*.pt
+
+# OS-specifika filer
+.DS_Store
+Thumbs.db

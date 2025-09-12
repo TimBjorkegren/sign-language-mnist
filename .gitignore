@@ -12,6 +12,7 @@ __pycache__/
 data/
 *.h5
 *.pt
+*.vscode/
 
 # OS-specifika filer
 .DS_Store

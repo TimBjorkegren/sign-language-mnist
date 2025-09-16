@@ -18,7 +18,9 @@ def hand_tracking(frame: av.VideoFrame):
 
     if results.multi_hand_landmarks:
         for hand_landmarks in results.multi_hand_landmarks:
+            coords = [(lm.x, lm.y, lm.z) for lm in hand_landmarks.landmark]
             mp_drawing.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+            print(hand_landmarks)
 
     return av.VideoFrame.from_ndarray(image, format="bgr24") #Taking the numpy image array and coverting it back to a AV frame and changing the color format to bgr which is what stream webrtc is expecting
 

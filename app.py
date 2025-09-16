@@ -24,6 +24,7 @@ def hand_tracking(frame: av.VideoFrame):
         model = load_model("cnn_model.keras", compile=False)
 
     image = frame.to_ndarray(format="bgr24")
+    image = cv2.flip(image, 1)
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     results = hands.process(image_rgb)

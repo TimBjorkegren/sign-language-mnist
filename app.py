@@ -5,86 +5,76 @@ from keras.models import load_model
 
 model = load_model("cnn_model.keras")
 
-
-labels_dict = {}
-label = 0
-for i in range(24):
-    if i == 9:
-        continue
-    labels_dict[label] = str(i)
-    label += 1
+labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 
+          'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 
+          'W', 'X', 'Y']
 
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
-mp_drawing_styles = mp.solutions.drawing_styles
-hands = mp_hands.Hands(static_image_mode=True, max_num_hands=1, min_detection_confidence=0.3)
+
+#mp_drawing_styles = mp.solutions.drawing_styles
+hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.7, min_tracking_confidence=0.7)
 
 
-cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)  
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
-dummy_input = np.zeros((1, 28, 28, 1), dtype=np.float32)
-model.predict(dummy_input)
-hands.process(np.zeros((240, 320, 3), dtype=np.uint8))
+def preprocess_hand_image(img):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    h, w = gray.shape
+    size = max(h, w)
+    square = np.zeros((size, size), dtype=np.uint8)
+    y_offset = (size - h) // 2
+    x_offset = (size - w) // 2
+    square[y_offset:y_offset+h, x_offset:x_offset+w] = gray
+
+    resized = cv2.resize(square, (28, 28))
+    normalized = resized.astype("float32") / 255
+    reshaped = np.reshape(normalized, (1, 28, 28, 1))
+    return reshaped
+
+cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+
 
 while True:
-    ret, frame = cap.read()
-    if not ret or frame is None:
-        continue
 
-    H, W, _ = frame.shape
+    ret, frame = cap.read()
+    if not ret:
+        print("Kunde inte läsa frame från kameran")
+        break
+
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = hands.process(frame_rgb)
-
-    data_aux = []
-    x_ = []
-    y_ = []
 
     if results.multi_hand_landmarks:
         for hand_landmarks in results.multi_hand_landmarks:
             mp_drawing.draw_landmarks(
                 frame,
                 hand_landmarks,
-                mp_hands.HAND_CONNECTIONS,
-                mp_drawing_styles.get_default_hand_landmarks_style(),
-                mp_drawing_styles.get_default_hand_connections_style()
+                mp_hands.HAND_CONNECTIONS
             )
-            for lm in hand_landmarks.landmark:
-                x = lm.x
-                y = lm.y
-                data_aux.append(x)
-                data_aux.append(y)
-                x_.append(x)
-                y_.append(y)
 
-    if data_aux and x_ and y_:
+            h, w, _= frame.shape
+            x_coords = [lm.x for lm in hand_landmarks.landmark]
+            y_coords = [lm.y for lm in hand_landmarks.landmark]
+            x_min, x_max = int(min(x_coords)*w), int(max(x_coords)*w)
+            y_min, y_max = int(min(y_coords)*h), int(max(y_coords)*h)
 
-        x1 = int(min(x_) * W)
-        y1 = int(min(y_) * H)
-        x2 = int(max(x_) * W)
-        y2 = int(max(y_) * H)
+            x_min = max(0, x_min)
+            y_min = max(0, y_min)
+            x_max = min(w, x_max)
+            y_max = min(h, y_max)
 
-        img = np.zeros((28, 28), dtype=np.float32)
-        for i in range(0, len(data_aux), 2):
-            px = int(np.clip(data_aux[i] * 28, 0, 27))
-            py = int(np.clip(data_aux[i+1] * 28, 0, 27))
-            img[py, px] = 1.0
+            if x_max - x_min > 0 and y_max - y_min > 0:
+                hand_img = frame[y_min:y_max, x_min:x_max]
+                processed = preprocess_hand_image(hand_img)
+                prediction = model.predict(processed)
+                predicted_class = np.argmax(prediction)
 
-
-        input_array = img.reshape(1, 28, 28, 1)
+                cv2.putText(frame, f'Predicted: {labels[predicted_class]}',
+                (x_min, y_min-10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
 
-        prediction = model.predict(input_array)
-        predicted_class = np.argmax(prediction[0])
-        predicted_char = labels_dict.get(predicted_class, "?")
-
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 0), 4)
-        cv2.putText(frame, predicted_char, (x1, y1 - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 0, 0), 3, cv2.LINE_AA)
-        print(predicted_char)
-
-    cv2.imshow("frame", frame)
+    cv2.imshow("sign language recognition", frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 

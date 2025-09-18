@@ -32,7 +32,7 @@ def preprocess_hand_image(img):
     square = np.zeros((size, size), dtype=np.uint8)
     y_offset = (size - h) // 2
     x_offset = (size - w) // 2
-    square[y_offset:y_offset+h, x_offset:x_offset+w] = thresh  # ✅ Fixed: use thresh, not gray
+    square[y_offset:y_offset+h, x_offset:x_offset+w] = thresh  # Fixed: use thresh, not gray
     
     resized = cv2.resize(square, (28, 28), interpolation=cv2.INTER_AREA)
     normalized = resized.astype("float32") / 255
